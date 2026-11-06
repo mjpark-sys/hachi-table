@@ -217,16 +217,17 @@ function stopCookSound() { clearTimeout(A.cookTimer); }
 /* ---------------- 네트워크 ---------------- */
 let ws = null;
 function connect() {
+  clearTimeout(S.retry); if (ws) { ws.onclose = null; try { ws.close(); } catch {} }   // 이전 시도 정리
   try {
     ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
   } catch { offline(); return; }
   ws.onopen = () => ws.send(JSON.stringify({ t: 'hello' }));
   ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; } onMsg(m); };
-  ws.onclose = () => { if (S.online) { S.online = false; toast('연결이 끊겼어요. 혼자서도 식사는 계속할 수 있어요.'); renderRoom(); } };
+  ws.onclose = () => { if (S.online) { S.online = false; toast('연결이 끊겼어요. 혼자서도 식사는 계속할 수 있어요.'); renderRoom(); } else offline(); };
   ws.onerror = () => {};
-  setTimeout(() => { if (!S.online && ws && ws.readyState !== 1) offline(); }, 4000);
+  setTimeout(() => { if (!S.online && ws && ws.readyState !== 1) offline(); }, 12000);   // 무료 서버는 잠에서 깨는 데 1분쯤 걸릴 수 있다
 }
-function offline() { S.online = false; renderRoom(); }
+function offline() { S.online = false; renderRoom(); clearTimeout(S.retry); S.retry = setTimeout(connect, 5000); }   // 처음 연결에 실패하면 5초마다 다시 시도
 const sendWs = o => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); };
 function sendState() { sendWs({ t: 'state', phase: me.phase, dish: me.dish, food: me.food }); renderSay(); }
 
