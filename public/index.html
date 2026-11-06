@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>하치네 집밥 · 같이 먹는 온라인 식당</title>
+<meta name="description" content="식당을 걸어 다니다 자리에 앉아 갓 지은 밥을 먹고, 옆 사람과 짧은 한마디를 나누는 온라인 식당.">
+<meta property="og:title" content="하치네 집밥">
+<meta property="og:description" content="걸어 다니고, 앉아서 따뜻한 밥을 먹는 온라인 식당">
+<meta property="og:image" content="assets/og.png">
+<meta name="theme-color" content="#f6d6a8">
+<style>
+  :root{--ink:#4a3322;--cream:#fff6e6;--warm:#f6d6a8;--accent:#e8845a}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:#2b1d14;color:var(--ink);overflow:hidden;
+    font-family:"Pretendard","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;touch-action:manipulation}
+  #stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  canvas{display:block;touch-action:none;cursor:default}
+  #labels{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:3}
+  .lab{position:absolute;left:0;top:0;display:flex;flex-direction:column;align-items:center;gap:3px;will-change:transform}
+  .lab .nm{font:700 12px/1 inherit;font-family:inherit;color:#fff;background:rgba(70,40,80,.45);padding:3px 8px;border-radius:99px;white-space:nowrap}
+  .lab.me .nm{background:rgba(232,100,70,.85)}
+  .lab.faded{opacity:.4}
+  .lab .bub{position:relative;background:rgba(255,255,255,.97);color:#4a3322;font:700 14px/1.2 inherit;font-family:inherit;padding:7px 12px;border-radius:14px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+  .lab .bub.unread::after{content:"";position:absolute;right:-3px;top:-4px;width:11px;height:11px;border-radius:50%;background:#e8453c}
+  .hidden{display:none !important}
+  .hud{position:fixed;z-index:5;font-size:13px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);pointer-events:none}
+  #room{left:14px;top:12px;line-height:1.5}
+  #room b{font-weight:600}
+  .btn{pointer-events:auto;border:0;border-radius:999px;background:rgba(255,246,230,.95);color:var(--ink);
+    font:600 14px inherit;font-family:inherit;padding:10px 16px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25);white-space:nowrap}
+  .btn:active{transform:scale(.96)}
+  .btn.go,.btn.big2{background:var(--accent);color:#fff}
+  .btn.big2{font-size:16px;padding:11px 24px}
+  #mute{right:14px;top:10px}
+  #hachiSay{position:fixed;z-index:5;left:50%;top:12px;transform:translateX(-50%);background:rgba(255,255,255,.95);
+    padding:9px 18px;border-radius:18px;font-weight:600;font-size:15px;box-shadow:0 2px 10px rgba(0,0,0,.25);pointer-events:none;max-width:70vw;text-align:center}
+  #hachiSay b{color:var(--accent);margin-right:6px}
+
+  /* 하단 중앙 동작 바 (산사처럼) */
+  #actbar{position:fixed;z-index:7;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));
+    display:flex;gap:2px;padding:7px 10px;border-radius:26px;background:rgba(30,24,18,.66);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 4px 18px rgba(0,0,0,.35)}
+  #actbar button{border:0;background:transparent;color:#fff;display:flex;flex-direction:column;align-items:center;gap:3px;width:96px;padding:7px 0 6px;
+    border-radius:18px;font:600 13px inherit;font-family:inherit;cursor:pointer}
+  #actbar button i{font-style:normal;font-size:25px;line-height:1}
+  #actbar button:hover:not(:disabled){background:rgba(255,255,255,.15)}
+  #actbar button.on{background:rgba(255,255,255,.22)}
+  #actbar button:disabled{opacity:.38;cursor:default}
+
+  /* 동작 바 위에 뜨는 패널들 */
+  #pops{position:fixed;z-index:6;left:50%;transform:translateX(-50%);bottom:calc(100px + env(safe-area-inset-bottom));
+    display:flex;flex-direction:column;align-items:center;gap:8px;width:min(98vw,860px);pointer-events:none}
+  #pops>*{pointer-events:auto}
+  #meal{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;background:rgba(30,24,18,.74);color:#fff;padding:8px 12px;border-radius:20px;font-weight:600}
+  #meal .bar{width:140px;height:6px;border-radius:3px;background:rgba(255,255,255,.25);overflow:hidden}
+  #meal .bar i{display:block;height:100%;width:0;background:#7dffb0}
+  #sayPop{display:flex;flex-direction:column;align-items:center;gap:6px;background:rgba(30,24,18,.74);padding:10px 12px;border-radius:22px;max-width:100%}
+  #sayPop .tip{color:rgba(255,255,255,.7);font-size:12px}
+  #sayBtns{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+  #sayBtns .btn{font-size:14px;padding:9px 13px}
+  #sayBtns .btn.write{background:var(--accent);color:#fff}
+  #sayBtns .btn.cool{opacity:.45;pointer-events:none}
+  #sayBtns .btn.lead{box-shadow:0 0 0 3px rgba(232,132,90,.6),0 2px 8px rgba(0,0,0,.25)}
+  #sayForm{display:flex;gap:6px;align-items:center;background:rgba(255,246,230,.96);border-radius:999px;padding:5px 6px 5px 16px;width:min(94vw,500px)}
+  #sayInput{flex:1;min-width:0;border:0;background:transparent;font:500 16px inherit;font-family:inherit;color:var(--ink);outline:none}
+  #sayCount{font-size:12px;opacity:.6;min-width:34px;text-align:right}
+  #sayForm .btn{box-shadow:none;padding:8px 14px}
+  #reply{display:flex;gap:6px;align-items:center;background:rgba(40,26,16,.86);color:#fff;border-radius:18px;padding:8px 10px;font-size:13px;max-width:96vw}
+  #reply .who{opacity:.85;margin-right:2px}
+  #reply .btn{padding:7px 12px;font-size:13px}
+
+  #pmenu{position:fixed;z-index:9;background:rgba(255,246,230,.98);border-radius:14px;box-shadow:0 4px 18px rgba(0,0,0,.4);padding:8px;min-width:160px}
+  #pmenu .nm{font-size:12px;opacity:.7;padding:2px 8px 6px}
+  #pmenu button{display:block;width:100%;text-align:left;border:0;background:transparent;font:600 14px inherit;font-family:inherit;padding:9px 10px;border-radius:8px;color:var(--ink);cursor:pointer}
+  #pmenu button:hover{background:rgba(232,132,90,.18)}
+
+  .overlay{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 50% 40%,#fbe3b8,#e9b57c);text-align:center;padding:24px}
+  .panel h1{font-size:clamp(30px,6vw,48px);margin:0 0 6px;letter-spacing:-.02em}
+  .panel p{margin:6px 0;line-height:1.6;font-size:clamp(14px,2.4vw,17px)}
+  .panel .sub{opacity:.7;font-size:13px}
+  .big{margin-top:22px;font-size:18px;padding:14px 32px;background:var(--accent);color:#fff}
+  #card{background:rgba(35,22,14,.82)}
+  #card .box{max-width:min(92vw,420px)}
+  #card img{width:100%;border-radius:18px;box-shadow:0 10px 40px rgba(0,0,0,.45)}
+  #card .row{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+  #toast{position:fixed;left:50%;top:60px;transform:translateX(-50%);z-index:8;max-width:90vw;text-align:center;
+    background:rgba(40,26,16,.84);color:#fff;font-size:13px;padding:8px 14px;border-radius:999px;opacity:0;transition:opacity .4s;pointer-events:none}
+  #toast.on{opacity:1}
+  @media (max-width:560px){#actbar button{width:84px}#hachiSay{font-size:13px}}
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="c"></canvas></div>
+<div id="labels"></div>
+
+<div id="room" class="hud"></div>
+<button id="mute" class="btn hud" title="소리 켜기/끄기">🔊</button>
+<div id="hachiSay" class="hidden"></div>
+<div id="toast"></div>
+
+<div id="pops" class="hidden">
+  <div id="reply" class="hidden"></div>
+  <div id="sayPop" class="hidden">
+    <div class="tip">가까이 있는 사람에게 들려요</div>
+    <div id="sayBtns"></div>
+    <form id="sayForm" class="hidden" autocomplete="off">
+      <input id="sayInput" type="text" placeholder="짧은 한마디 (15자)" enterkeyhint="send">
+      <span id="sayCount">0/15</span>
+      <button type="submit" class="btn go">보내기</button>
+      <button type="button" id="sayCancel" class="btn">취소</button>
+    </form>
+  </div>
+  <div id="meal" class="hidden"></div>
+</div>
+
+<div id="actbar" class="hidden">
+  <button id="actSit"><i>🪑</i><span>자리에 앉기</span></button>
+  <button id="actEat"><i>🍚</i><span>밥먹기</span></button>
+  <button id="actTalk"><i>💬</i><span>대화하기</span></button>
+</div>
+
+<div id="pmenu" class="hidden">
+  <div class="nm" id="pmName"></div>
+  <button id="pmHide">이 사람 말 숨기기</button>
+  <button id="pmReport">신고하고 숨기기</button>
+  <button id="pmClose">닫기</button>
+</div>
+
+<div id="intro" class="overlay">
+  <div class="panel">
+    <h1>하치네 집밥</h1>
+    <p>식당을 걸어 다니다 자리에 앉아, 갓 지은 밥을 먹는 온라인 식당.</p>
+    <p class="sub">🎧 헤드폰을 끼면 밥솥 소리가 더 잘 들려요</p>
+    <button id="start" class="btn big">식당에 들어가기</button>
+    <p class="sub" style="margin-top:18px">바닥을 눌러 걸어 다니고, 빈 의자를 눌러 앉아요. 가까운 사람과 짧은 한마디를 나눌 수 있어요. 서로 존중하는 말만 해 주세요.</p>
+  </div>
+</div>
+
+<div id="card" class="overlay hidden">
+  <div class="box">
+    <img id="cardImg" alt="오늘의 한 끼 카드">
+    <div class="row">
+      <button id="bye" class="btn">👋 인사하기</button>
+      <button id="save" class="btn">카드 저장</button>
+      <button id="share" class="btn">공유하기</button>
+      <button id="again" class="btn go">한 끼 더</button>
+    </div>
+  </div>
+</div>
+
+<script src="layout.js"></script>
+<script type="module" src="game.js"></script>
+</body>
+</html>

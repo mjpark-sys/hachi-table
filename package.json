@@ -1,0 +1,17 @@
+{
+  "name": "hachi-table",
+  "version": "1.0.0",
+  "description": "하치네 집밥 - 같이 먹는 온라인 밥상",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build:character": "node scripts/build-hachi-glb.mjs",
+    "test": "node test_server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ws": "^8.22.1"
+  }
+}
